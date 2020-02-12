@@ -1,0 +1,345 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=0.75in]{geometry} % lots more margin
+\pagenumbering{gobble} % ignore page numbers
+
+\usepackage{titling}
+\setlength{\droptitle}{-0.75in}
+
+\title{CMPT 404 review notes}
+\author{Jack `jryzkns` Zhou}
+\date{}
+
+\setlength{\parindent}{0cm}
+
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{hyperref} % for nice looking urls
+\usepackage{booktabs} % for making tables
+\usepackage{amssymb}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subfigure}
+\usepackage{multicol}
+
+\begin{document}
+
+\maketitle
+
+\begin{multicols}{2}
+
+
+\section{Review on Probability}
+
+\subsection{Distributions and Events}
+
+A \textbf{Sample Space} is defined as a finite set. For example we often will use $U = \{0,1\}^n$.
+
+A \textbf{Probability Distribution} $P$ over $U$ is a function $P: U \rightarrow [0,1]$ such that $\sum_{x \in U} P(x) = 1$, or colloquially the entries in $P$ sums to 1.
+
+An \textbf{Event} is described as a subset of the sample space. For an event $A$, the probability of the event happening is defined as $\mathbb{P}[A] = \sum_{x \in A} P(x) \in [0,1]$. Trivially, $\mathbb{P}[U] = 1$. For events $A_1$ and $A_2$, the probability that either event happens is no greater than the sum of each event happening, that is: $\mathbb{P}[A_1 \cup A_2] \leq \mathbb{P}[A_1] + \mathbb{P}[A_2]$. We refer to this as the \textbf{Union Bound}. 
+
+Two events are considered to be \textbf{Independent} if the probability that they both occur is the same as the product of the two events happening separately. That is, $\mathbb{P}[A_1 \wedge A_2] = \mathbb{P}[A_1]\cdot\mathbb{P}[A_2]$.
+
+\subsubsection{Random Variables and Expectations}
+
+A \textbf{Random Variable (r.v.)} is defined as a function $X: U \rightarrow V$. A random variable $X$ induces a distribution on $V$: $\mathbb{P}[X=v] := \mathbb{P}[X^{-1}(v)]$. One particular random variable is the uniform random variable $\mathbf{r}$ where we denote a random bitpattern. It is defined as $\forall a \in U \; \mathbb{P}[r = a] = |U|^{-1}$. The concept of independence for random variables also apply. For two random variables $X$ and $Y$ that take on values in $V$, $X$ and $Y$ are said to be independent randomv variables if $\forall a,b \in V \; \mathbb{P}[X = a \wedge Y = b] = \mathbb{P}[X = a] \cdot \mathbb{P}[Y = b]$.
+
+A property of random variables that we can exploit is working with their \textbf{Expectations}, it can be interpreted as a "mean". The expectation of a random variable $X$ over $V$ is defined as $\mathbf{E}[X] = \sum_{a \in V} a * \mathbb{P}[X=a]$. It is important to note that the expectation is a linear operator.
+
+\subsubsection{Bernoulli Trials and Repeated Experiments}
+
+For a r.v. $X$ that only has a binary outcome (with outcomes enumerated as 0 and 1; e.g. A coin toss), and $\mathbb{P}[X=1] = p$, we denote such experiment as a Bernoulli trial. The sample space after carrying out $n$ Bernoulli trials is ${0,1}^n$. With this setting, we have some properties:
+
+\begin{itemize}
+    \item Number of outcomes with $k$ successes is $n \choose k$
+    \item Probability of getting 1 in any trial is $p$, and getting 0 is $(1 - p)$
+    \item Probability of getting exactly $k$ 1's out of $n$ trials is ${n \choose k} p^k (1 - p)^{n - k}$
+    \item Probability of getting the first success on exactly the $k$\textsuperscript{th} trial is $p(1-p)^{k-1}$
+\end{itemize}
+
+Suppose we name a r.v. $X$ such that it indicates which trial we obtain success on a Bernoulli trial, we can compute the expected amount of trials needed to obtain a successful outcome as $\mathbb{E}[X] = 1/p$. For example, with a fair coin we know that the probability of landing heads is $1/2$. We expect 2 coinflips to grant us an outcome of heads.
+
+\subsection{Markov's Inequality}
+
+If a r.v. $X$ is non-negative, then 
+
+$$
+\mathbb{P}[X \geq k] \leq \frac{\mathbb{E}[X]}{k}
+$$
+
+A quick proof follows that the expectation of a r.v. $X$ can be broken down in the following way: $\mathbb{E}[X] = \mathbb{E}[X < a] \cdot \overline{a} + \mathbb{E}[X \geq a] \cdot a$ where $\overline{a}, a$ encompasses all of $X$'s domain. Then $\mathbb{E}[X] = 0 \cdot \overline{a} + \frac{\mathbb{E}[X]}{a} \cdot a$. Thus we can see the lower and upper bounds on $\mathbb{E}[X < a]$ and $\mathbb{E}[X \geq a]$.
+
+A quick corollary on this inequality is called \textbf{Chebyshev's inequality}, where given the variance of the r.v., the following holds:
+
+$$
+\mathbb{P}[|X - \mathbb{E}[X]| \geq a] \leq \frac{\mathbb{V}[X]}{a^2}
+$$
+
+\subsection{Exclusive OR (XOR)}
+
+An exclusive or operation (XOR) is a bitwise addition mod 2. It is denoted with the $\oplus$ symbol and it is central in Cryptography. We will discuss a specific property of XOR.
+
+Suppose $Y$ is r.v. over ${0,1}^n$ and $X$ is an independent uniform variable over $\{0,1\}^n$ as well. $Z := Y \oplus X$ is a uniform random variable on $\{0,1\}^n$ as well.
+
+\section{Historical Ciphers}
+
+In this section we introduce the notion of \textbf{Symmetric Encoding Schemes (SES)}, which constitutes of a pair of algorithms $(E,D)$ which is a pair of encryption and decrpytion algorithms. 
+
+The sender (uses the encryption algorithm) and receiver (uses the decrpytion algorithm) have an agreed upon key $k$, which is used in both the encryption and decryption (thus symmetric). The encrypted message is called a ciphertext and defined as $c:= E(k,m)$. Decrypting the ciphertext is done using the same key: $m := D(k,c)$. A properly constructed SES has the property that one can always recover the plaintext given the correct key:
+
+$$
+m = D(k,E(k,m))
+$$
+
+There could be an eavesdropper that takes the ciphertext and performs an attack where the ciphertext is decrypted without knowledge of the key. We will discuss some historical ciphers and how they can be attacked using various methods.
+
+\subsection{Monoalphabetic Ciphers}
+
+This type of cipher replaces singular symbols in the original plaintext with another symbol. There are subtypes of this kind of cipher:
+
+\subsubsection{Shift Cipher}
+
+The most famous example of this kind of cipher is the Caesar Cipher, where each letter $X$ in the ciphertext is mapped to $(X + 3) \mod 26$. More generally, we can change the shift to be any number in $[1,25]$, and this shift amount can be considered to be a key. 
+
+To retrieve the key for this cipher, simply send the letter \texttt{a} which corresponds to 0, and the resulting ciphertext will reveal the key.
+
+However, knowing that a ciphertext is encrypted in this cipher means the decrytion can be done in a brute force attack, as there are only 25 tries to make before decrypting the message.
+
+\subsubsection{Linear Cipher}
+
+This is an extension of a shift cipher. Each letter $X$ in the plaintext is mapped to $(aX + b) \mod 26$, where a and b are now the keys to the cipher.
+
+To retrieve the key for this cipher, send the message \texttt{ab} which corresponds to 0 and 1. The resulting ciphertext will give indication of how to solve for a and b in a linear system of equations.
+
+To break this cipher, refer to how it is done with a general Monoalphabetic Cipher
+
+\subsubsection{Substitution Cipher}
+
+This is a more general case where each letter $X$ in the plaintext is replaced with another arbitrary chosen letter, the mapping is recorded in a substitution table and it is considered a key.
+
+To retrieve the key for this cipher, send the alphabet \texttt{abcdefghijklmnopqrstuvwxyz} and the subtitution table will be retrieved.
+
+To break this cipher, refer to how it is done with a general Monoalphabetic Cipher.
+
+\subsection{Cracking Monoalphabetic Ciphers}
+
+If we know the language that the plaintext is in, we can infer lots of information about the plaintext from only looking at the ciphertext. In a sense, the linguistic structure of the plaintext is preserved in the ciphertext.
+
+For the rest of the discussion, we will consider that the plaintext is always english.
+
+\subsubsection{Exploiting Linguistic Structure}
+
+Some rules in English that helps with breaking monoalphabetic ciphers are:
+
+\begin{enumerate}
+    \item Single letter words are almost always \texttt{A} or \texttt{I}
+    \item Whenever there is an apostrophe, the following is generally followed by \texttt{S}, \texttt{T}, \texttt{D}, \texttt{M}, \texttt{LL}, or \texttt{RE}
+    \item Double letters are often \texttt{LL}, \texttt{EE}, \texttt{SS}, \texttt{OO}, \texttt{TT}
+\end{enumerate}
+
+Usually, after a few replacement in the ciphertext, we start to see patterns that help us find the plaintext easier as part of words would be retrieved by then.
+
+\subsubsection{Frequency Analysis}
+
+Because substitution preserves the relationship between letters, letter frequencies in a language is not going to change relative the letter frequencies in the ciphertext. Therefore, the most frequently occurring letters in the ciphertext usually corresponds with the most frequently occurring letters in english. For more information, visit \url{https://en.wikipedia.org/wiki/Frequency_analysis}
+
+\subsection{Vigener Cipher}
+
+A cipher where the key is a n-digit string, and the string. The key is duplicated and concatenationed until it is matched in length with the plaintext. Then, the extended key-mask Y and the plaintext X is encrypted as $c = (Y + X) \mod 26$.
+
+To recover the key from a Vigener cipher, simply send an arbitrarily long string of \texttt{a}'s (i.e. \texttt{aaaaaa...}). The resulting ciphertext will be the key-mask generated for encrypting the plaintext, and judging from redundancies the key can be easily recovered.
+
+To crack the cipher, it would be helpful to know the length of the key. However if not, we can guess up to the length of the message. To start, generate $k$ bins enumerated from $0$ to $k-1$ of letters for a key of length $k$. Each $(i \mod k)$\textsuperscript{th} letter in the ciphertext gets put in the $i$\textsuperscript{th} bin. Each of the bins now contains letters that were shifted by the same value. Perform frequency analysis on each of the bins.
+
+\section{The security should lie in the key, not the system}
+
+Due to Cryptography's origins in wartimes, having a encryption system secured is not very practical as it needs to be distributed and it could easily be stolen. The design of encryption schemes then emphasized keys to be its main security feature. It is not as compromiseable as an encrpytion system, which usually took form in some sort of machinery.
+
+\subsection{Kerchoff's Principle}
+\begin{quote}
+    "The system must not be required to be secret, and it must be able to fall into the hands of the enemy without inconvenience."
+\end{quote}
+\subsection{Shannon's Maxim}
+\begin{quote}
+    "The enemy knows the system."
+\end{quote}
+
+\section {Information Theoretic Security and Perfect Secrecy}
+
+\subsection{The One Time Pad (OTP)}
+
+The \textbf{One Time Pad (OTP)} is the first example of a "secure" cipher, and it is very simple. The key space, plaintext space, and ciphertext space are all $\{0,1\}^n$. To encrypt a plaintext $m$, a key $k$ is chosen and the ciphertext is defined as $c = E(k,m) = k \oplus m$. The decryption is equally as simple: $m = D(k,c) = k \oplus c$. The cipher is correct as $k \oplus k \oplus m = 0 \oplus m = m$.
+
+Due to properties in XOR, when given the message $m$ and the ciphertext $c$, the key can be retrieved easily as $k = m \oplus c$.
+
+\subsection{Perfect Secrecy}
+
+Claude Shannon, the father of Information Theory had the idea that a secure cipher should have the property that \texttt{the ciphertext should reveal no information about the plaintext}. In more rigourous terms:
+\begin{quote}
+A cipher $(E,D)$ over $(\mathcal{K},\mathcal{M}, \mathcal{C})$ has perfect secrecy if for every distribution over $\mathcal{M}$, every $m \in \mathcal{M}$, and every $c \in \mathcal{C}$ such that $\mathbb{P}[C=c] >0$, 
+$$
+\mathbb{P}[M=m | C=c] = \mathbb{P}[M=m]
+$$
+\end{quote}
+
+This essentially implies that the most powerful Adversary could learn nothing about the plaintext from simply the ciphertext (no CT-only attacks)
+
+\subsubsection{Alternative Definitions}
+
+Other ways to descrie perfect secrecy are as follows, they are equivalent and show alternate perspectives.
+
+\begin{enumerate}
+    \item $\forall m_0, m_1\;\forall c \; \mathbb{P}[C=c|M=m_0] = \mathbb{P}[C=c|M=m_1]$
+    \item $\forall m_0, m_1\;\forall c \;\forall k\; \mathbb{P}[E(k,m_0) = c] = \mathbb{P}[E(k,m_1) = c]$
+\end{enumerate}
+
+\subsection{Perfect Secrecy as a Game}
+
+It is often more useful to describe Perfect Secrecy as a game that has an Adversary and a Challenger (or sometimes referred to as "Alice").
+
+The Adversary selectively sends the Challenger two plaintexts $m_1, m_2$. The Challenger will pick a key $k$ at random and randomly selects one of the $m_1, m_2$ to encrypt into ciphertext $c$ and send it back to the Adversary. The task of the Adversary is to determine if $c$ is encrypted from $m_1$ or $m_2$. We say that the encryption scheme that the Challenger is using is secure if the Adversary could not tell them apart and has to guess with a probability of $1/2$.
+
+\subsubsection{Monoalphabetic ciphers are not perfectly secure}
+
+Under the light of the game, if the Adversary sends the plaintexts \texttt{FAR} and \texttt{FEE}, any possible ciphertexts would either follow the form \texttt{XYY} or \texttt{XYZ}. It is then clear to see that the form \texttt{XYY} can only be encrypted from \texttt{FEE} and \texttt{XYZ} can only be encrpyted from \texttt{FAR}. Thus the Adversary can always come up with the correct answer when the Challenger uses this kind of cipher.
+
+\subsection{OTP is perfectly secret}
+
+We will proceed to prove this property using the second definition of perfect secrecy from section 4.2.1. We assume $\mathcal{K} = \mathcal{C} = \mathcal{M} = \{0,1\}^n$.
+
+For any plaintext $m$ and ciphertext $c$, there is exactly one key $k$ such that $E(k,m) = c$. In otherwords, $|\{k \in \mathcal{K} | E(k,m) = c\}| = 1$. For any $m_0$,
+$$
+\mathbb{P}[E(k,m_0) = c] = |\{k \in \mathcal{K} | E(k,m) = c\}|/|\mathcal{K}| = 1/2^n
+$$
+
+We can apply the same argument to any $m_1$ that is not $m_0$. And as such, we can see that $\mathbb{P}[E(k,m_0) = c] = \mathbb{P}[E(k,m_1) = c]$.
+
+
+Unfortunately, the perfect secrecy property of OTP only holds when the key-space is at least as big as the message space($|\mathcal{K}| \geq |\mathcal{M}|$). To quickly show this, the OTP cipher will have to first extend the key so it matches the length of the message. Suppose this is done with a function $h$, then the cipher is defined as $E(k,m) = k||h(k) \oplus m$ (where $||$ denotes concatenation). Therefore, a ciphertext $c_{\overline{h}}$ constructed by $k||\overline{h}(k) \oplus m$ (where $\overline{h}$ is simply not $h$) is not generatable by $E$ as we have defined. Thus, $\mathbb{P}[E(k,m) = c_{\overline{h}}] = 0$ while $\exists c\;\mathbb{P}[E(k,m) = c] \geq 0$. This violates our definition defined in 4.2.1.
+
+\subsection {Statistical Security}
+
+Due to the fact that OTP requires the same length of key as message, it is impractical. Consider encrypting a 1GB bitstream, a 1GB key will also be needed. To relax the "perfect" aspect, we will come up with new ways to quantify security.
+
+\subsubsection {Statistical Distance}
+
+Suppose we have two distributions $\mathcal{X}$ and $\mathcal{Y}$ over $\{0,1\}^m$, the statistical distance (aka. Total Variational Distance) between $\mathcal{X}$ and $\mathcal{Y}$ is defined as
+
+$$
+\Delta (\mathcal{X}, \mathcal{Y}) = \max_{T \subseteq \{0,1\}^m} |\mathbb{P}[\mathcal{X} \in T] - \mathbb{P}[\mathcal{Y} \in T]|
+$$
+
+If $\Delta (\mathcal{X}, \mathcal{Y}) \leq \epsilon$ for a negligible $\epsilon$, then we can say that $\mathcal{X}$ and $\mathcal{Y}$ are $\epsilon$-equivalent $\mathcal{X} \equiv_\epsilon \mathcal{Y}$.
+
+In theory $\epsilon$ is a function $\epsilon : \mathbb{Z}^{\geq 0} \rightarrow \mathbb{R}^{\geq 0}$ that is considered non-negligible when $\exists d : \epsilon(\lambda) \geq 1/\lambda^d$ and negligible otherwise. However, in practice, we would consider $\epsilon$ to be a scalar, and something like $\epsilon \geq 1/2^{30}$ to be non-negligible as vulerabilities are likely to happen over 1GB of data. However, something to the likes of $\epsilon \geq 1/2^{80}$ is considered negligible as there are no vulnerabilities that would happen over the life of the key.
+
+\subsubsection {Statistical Security Defined}
+
+A cipher $(E,D)$ is $\epsilon$-statistically secure if for any two plaintexts $m_0$ and $m_1$, $E(\mathbf{k},m_0) \equiv_\epsilon E(\mathbf{k},m_1)$.
+
+\subsubsection {Statistical Insecurities}
+
+Let $(E,D)$ be a cipher with keys that have one less digit than messages (suppose we are working with n bits in the message), then there are messages $m_0, m_1$ such that $\Delta(E(\mathbf{k},m_0), E(\mathbf{k},m_1)) \geq 1/2$.
+
+To put it more simply, there are two messages where the set of their ciphertexts overlap by at most half. In the context of the game the Adversary simply has to find those two messages to send to the Challenger. If the ciphertext he receives back is not in the overlap, then the Adversary is certain of the source message. Otherwise, the Adversary guesses. There is at least $1/2$ chance that the ciphertext is not in the overlap, so the success rate of the Adversary is at least $1/2 \cdot 1 + 1/2 \cdot 1/2 = 3/4$.
+
+
+\section {Stream Ciphers and Pseudorandom Generators}
+
+To counteract the issue with the keysize having to be the size of the message in the OTP case, we replace the random key with a pseudorandom that "looks random"
+
+\subsection {Pseudorandom Generators}
+
+A pseudorandom generator (PRG) $G$ is a function that generates strings of arbitrary length digit by digit that "look random" from a smaller truly random seed.
+
+$$
+G: \{0,1\}^m \rightarrow \{0,1\}^n\;\;\;\;\;\; n >> m
+$$
+
+$G$ is required to be efficiently computable and deterministic. In our context efficient is simply meant as something that runs in polytime. The deterministic factor is needed for recovering the output for decryption when used in a cipher. 
+
+\subsubsection {Security Parameter}
+
+PRG's are parametrized by a security parameter $\lambda$, where the PRG becomes increasing secure with increasing $\lambda$. Seed and output lengths increase with $\lambda$.
+
+\subsubsection {PRG Predictability}
+
+PRG's should be unpredictable. Meaning, given its previous outputs, we could and should not be able to predict its future outputs. We say that a PRG is predictable at position $i$ if there exists an Algorithm $A$ that is polytime in $\lambda$ such that
+
+$$
+\mathbb{P}[A(\lambda, G_\lambda(\mathbf{k})[:i]) = G_\lambda(\mathbf{k})[i+1]] \geq \frac{1}{2} + \epsilon(\lambda)
+$$
+
+for some non-negligible function $\epsilon(\lambda)$. In simpler terms, a PRG is predictable if there is an algorithm that can predict the next bit of output given all of its previous inputs with greater than chances of guessing (1/2).
+
+Unpredictable PRG's are secure, but we will explore this notion later on when the concept of security of PRG's are formally introduced.
+
+Yao's theorem states that if $G$ is unpredictable at any position $i$, then $G$ is a secure PRG.
+
+\subsection {Stream Ciphers}
+
+A stream cipher utilizes a PRG to generate a keystream, where each digit of the key is used to encrypt a digit in the plaintext with an XOR operation. It can be considered as OTP with a PRG keystream as key: $E(k,m) = G(k) \oplus m$, $D(k,c) = G(k) \oplus c$. 
+
+Stream ciphers cannot be perfectly secure, so we will need to redefine what it means to be secure. Our goal is to define what it means to have a distribution that is indistinguishable from random (uniform distribution). We know that we can work with the definition of $\epsilon$-equivalence, but this is impossible when we have fewer keys/seeds than $2^n$ (from a space smaller than $\{0,1\}^n$). Instead, we are going to define the notion of computational indistinguishability.
+
+\subsection {Computational Indistinguishability}
+
+Two families of distributions are said to be computationally indistinguishable if no efficient algorithm can tell the difference between them except with a small probability. (From Wikipedia)
+
+Suppose we have an algorithm $A$ that will be used and referred to as a statistical test. Its purpose will be to attempt to tell apart distributions, it will run in probabilistic polynomial time (PPT), where $t(|x|) \in O(|x|^k)$ for some $k$.
+
+Disregarding the implementation of any $A$, we are concerned with the output of $A$. Namely, we consider some conditions, and then if the conditions are met, $A$ returns 1. Otherwise, it returns 0.
+
+Suppose $P_1$ and $P_2$ are two distributions over $\{0,1\}^n$, we say that $P_1$ and $P_2$ are computationally indistinguishable iff for every efficient statistical test $A$,
+
+$$
+|\mathbb{P}_{x \leftarrow P_1}[A(x) = 1] - \mathbb{P}_{x \leftarrow P_2}[A(x) = 1]| < \epsilon
+$$
+
+for a negligible $\epsilon$. Analogously, we can also say that $G$ is secure if $\{k \leftarrow K : G(k)\} \approx_p uniform(\{0,1\}^n)$. The $p$ here stands for polynomial bound on running time of $A$.
+
+More generally $P_1 \approx_{t,\epsilon} P_2$ denotes every $A$ running in at most $t$ time cannot differentiate $P_1$ from $P_2$ with probability greater than $\epsilon$.
+
+\subsection {Adversarial Advantage}
+
+For a given statistical test $A$ on $\{0,1\}^n$, The Adversary's advantage on a particular PRG $G$ is defined as the following:
+
+$$
+Adv_{_{PRG}}[A, G] = | \mathbb{P}[A(G(\mathbf{k})) = 1] - \mathbb{P}[A(\mathbf{r}) = 1] |
+$$
+
+As Adversarial advantages are constructed from probabilities, we can see that $0 \leq Adv_{_{PRG}}[A, G] \leq 1$. If the advantage is close to 1, then $A$ can tell the difference between the output of $G$ and $\mathbf{r}$. If the advantage is close to 0, then $A$ cannot. 
+
+\subsection {PRG Security}
+
+A pseudorandom generator $G$ is said to be secure if every efficient statistical test $A$ satisfies that $Adv_{_{PRG}}[A, G] < \epsilon$ for a negligible $\epsilon$.
+
+It is not known whether if there are provably secure PRG's, the existence of them would imply $P \neq NP$.
+
+If a PRG is unpredictable, then it is considered secure. To show this we will prove the contrapositive: If a PRG $G$ is predictable, then it is insecure. Suppose we have an efficient algorithm $A$ such that 
+
+$$
+\mathbb{P}[A(G(\mathbf{k})[:i]) = G(\mathbf{k})[i+1]] \geq \frac{1}{2} + \epsilon
+$$
+
+with a non-negligible $\epsilon$. We define a statistical test $B$ where it outputs 1 if $A$ outputs the correct output (guesses the next output of $G$) and 0 otherwise. Then $Adv_{_{PRG}}[B,G] = |\mathbb{P}[B(\mathbf{k}) = 1] - \mathbb{P}[B(G(\mathbf{k})) = 1]| = | 1/2 - (1/2 + \epsilon)| \geq \epsilon$, of which $\epsilon$ is non-negligible so therefore $G$ is not secure.
+
+\subsection {Semantic Security}
+
+A cipher $E$ is said to be semantically secure if for all efficient $A$, $Adv_{_{SS}}[A,E]$ is negligible. Alternatively, for all explicit $m_0, m_1$, the distributions induced by both are computationally indistinguishable.
+
+As such, using a secure PRG in a stream cipher means the resulting cipher is semantically secure.
+
+One way to see this is that for any $m_0$, the distribution $m_0 \oplus G(\mathbf{k})$ is computationally indistinguishable to $m_0 \oplus \mathbf{r}$, which is computationally indistinguishable to $m_1 \oplus \mathbf{r}$, which is computationally indistinguishable to $m_1 \oplus G(\mathbf{k})$. Therefore by transitivity $m_0 \oplus G(\mathbf{k}) \approx_p m_1 \oplus G(\mathbf{k})$.
+
+\section{}
+
+start from notes 6
+
+\end{multicols}
+
+\end{document}
