@@ -262,6 +262,20 @@ $$
 
 $G$ is required to be efficiently computable and deterministic. In our context efficient is simply meant as something that runs in polytime. The deterministic factor is needed for recovering the output for decryption when used in a cipher. 
 
+\subsubsection{One-Way Functions}
+
+A function $f: \{0,1\}^* \rightarrow \{0,1\}^*$ is a one-way function if it is easy to compute for any $x \in \{0,1\}^*$, and it is hard to invert for a random $\{0,1\}^*$. 
+
+Due to this property, we can build a PRG with any one-way function. However, we do not have any provably one-way functions, as the existence of so would imply $P \neq NP$.
+
+Some of the candidates for a one-way function are essentially hard problems such as:
+
+\begin{itemize}
+    \item Integer factorization (given $x = pq$, find $p,q$) 
+    \item Subset sum
+    \item Discrete logarithm
+\end{itemize}
+
 \subsubsection {Security Parameter}
 
 PRG's are parametrized by a security parameter $\lambda$, where the PRG becomes increasing secure with increasing $\lambda$. Seed and output lengths increase with $\lambda$.
@@ -336,9 +350,69 @@ As such, using a secure PRG in a stream cipher means the resulting cipher is sem
 
 One way to see this is that for any $m_0$, the distribution $m_0 \oplus G(\mathbf{k})$ is computationally indistinguishable to $m_0 \oplus \mathbf{r}$, which is computationally indistinguishable to $m_1 \oplus \mathbf{r}$, which is computationally indistinguishable to $m_1 \oplus G(\mathbf{k})$. Therefore by transitivity $m_0 \oplus G(\mathbf{k}) \approx_p m_1 \oplus G(\mathbf{k})$.
 
-\section{}
+\section{Stream Cipher Vulnerabilities}
 
-start from notes 6
+\subsection{Two Time Pad}
+
+A repeated use of the same key in OTP is insecure. Consider two ciphertexts $C_1 = m_1 \oplus PRG(k)$ and $C_2 = m_2 \oplus PRG(k)$. By applying $C_1 \oplus C_2$ we get $m_1 \oplus m_2$. There is enough redundancy in English that the messages can be separated to obtain $m_1$ and $m_2$ separately, thus making it a vulnerability. Project Venona was a historical example where Two Time Pad was used.
+
+\subsubsection{MS-PPTP}
+
+In Windows NT communications between clients and servers, messages on the client side and server side are both sent encrypted with the same key. As such, when catching messages from both ends an attacker simply needs to XOR the messages and the payloads from both ends will be exposed. For more information, visit \url{https://en.wikipedia.org/wiki/Point-to-Point_Tunneling_Protocol#Security}
+
+\subsubsection{802.11b WEP}
+
+WEP encryption essentially uses a stream cipher where its input to the PRG is a 24 bit IV (used as an unique value) concatenated with a 104 bit key. Each payload that is sent is encrypted with an IV which is incremented every time since the device's last reset. However, 24 bits is not enough to guarantee uniqueness over time as the counter repeats after $2^24$ frames, which is only roughly 17 million frames (or the number of rgb values there are). For more information, visit \url{https://en.wikipedia.org/wiki/Wired_Equivalent_Privacy#Weak_security}
+
+\subsection{Malleability}
+
+Suppose an attacker knows part of the plaintext in a ciphertext stream, then the attacker could modify the ciphertext stream before redirecting it to its intended receiver. Suppose we know that the cipher stream is an encrypted email from Bob to Alice, then the attacker could modify the email content and replace \texttt{Alice} to be \texttt{Eve}. This can be done as $(k \oplus m_0 ) \oplus m_0 = k$ and we can inject a different plaintext $m_1$ simply by $(k \oplus m_0 ) \oplus m_0 \oplus m_1 = k \oplus m_1$.
+
+\section{Examples of Stream Ciphers}
+\subsection{Linear Feedback Shift Register}
+
+An Linear Feedback Shift Register (LFSR) is easy to implement (and often implemented) in hardware. The algorithm is roughly as follows:
+
+\begin{enumerate}
+    \item Initialize with the seed
+    \item For a few selected positions in the register, extract the values and XOR all of them, call the resulting value $o_i$
+    \item \texttt{shr} the register, set msb to be $o_i$
+    \item repeat steps 2 and 3 as desired
+\end{enumerate}
+
+In practice LFSR's are used in combination. For example, DVD encryption (CSS) uses 2 LFSR's, GSM (A5/1,2) uses 3, and Bluetooth (E0) uses 4. Due to its linear nature, a n-bit LFSR can be broken after getting 2n bits of output. 
+
+The glibc random function uses a Linear Congruential Generator (LCG), which is similar to an LFSR and still vulnerable.
+
+\subsection{Content Scrambling System}
+
+The Content Scrambling System (CSS) is used for DVD encryption. It is built with two LFSR's and a 40 bit key due to a US law that prohibits exporting crypto that uses keys longer than 40 bits.
+
+The 40 bit (5 byte) key is broken down into a 2-byte part and a 3-byte part named $k_2, k_3$ respectively. After prepending the keys by \texttt{1}, they are each fed to a 17-bit LFSR and a 25 bit LFSR. Each LFSR outputs 8 bits which are summed up together mod 256. The resulting 8-bits is used and the carry bit is passed to the next iteration.
+
+Due to the fact that keys are only 5 bytes wide, the cipher can be brute forced.
+
+\subsection{Rivest Cipher 4}
+
+While the LFSR is efficient in hardware, it isn't so in software. The Rivest Cipher 4 (RC4) addresses this by being an efficeint software solution that avoids the use of LFSR's.
+
+It is used in HTTPS and WEP, but nonetheless it is insecure due to some vulnerabilities. In particular, there is a bias in the initial output that renders its PRG predictable.
+
+For more information, visit \url{https://en.wikipedia.org/wiki/RC4#Biased_outputs_of_the_RC4}
+
+\subsection{Salsa 20}
+
+The Salsa 20 Stream Cipher is one that is selected by the eSTREAM project and its novelty comes with the usage of a nonce in encryption. As of writing there are no published attacks on this cipher.
+
+\subsection{Others}
+
+There are other PRG's such as the Blum-Blum-Shub PRG whose security relies on the notion that factoring is difficult, and the Subset Sum PRG whose security relies on the notion that subset sum is difficult
+
+PRG's whose sole purpose is to generate random numbers work by continuously adding entropy to its internal state, which can come from hardware rng or peripheral inputs such as from keyboard or mouse.
+
+\section{Block Ciphers}
+
+Start from notes 7
 
 \end{multicols}
 
