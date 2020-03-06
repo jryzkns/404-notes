@@ -311,7 +311,7 @@ Disregarding the implementation of any $A$, we are concerned with the output of 
 Suppose $P_1$ and $P_2$ are two distributions over $\{0,1\}^n$, we say that $P_1$ and $P_2$ are computationally indistinguishable iff for every efficient statistical test $A$,
 
 $$
-|\mathbb{P}_{x \leftarrow P_1}[A(x) = 1] - \mathbb{P}_{x \leftarrow P_2}[A(x) = 1]| < \epsilon
+|\underset{x \leftarrow P_1}{\mathbb{P}}[A(x) = 1] - \underset{x \leftarrow P_2}{\mathbb{P}}[A(x) = 1]| < \epsilon
 $$
 
 for a negligible $\epsilon$. Analogously, we can also say that $G$ is secure if $\{k \leftarrow K : G(k)\} \approx_p uniform(\{0,1\}^n)$. The $p$ here stands for polynomial bound on running time of $A$.
@@ -410,9 +410,258 @@ There are other PRG's such as the Blum-Blum-Shub PRG whose security relies on th
 
 PRG's whose sole purpose is to generate random numbers work by continuously adding entropy to its internal state, which can come from hardware rng or peripheral inputs such as from keyboard or mouse.
 
+\section{Random Functions and Permutations}
+
+A random function $f: X \rightarrow Y$ is constructed by picking a random $y \in Y$ for each $x \in X$ and setting $f(x) = y$. For example, a random function $f: \{0,1\}^n \rightarrow \{0,1\}^n$ can be represented by a random binary string of length $n \cdot 2^n$. Under this construction, a random function $f: X \rightarrow X$ is a random one-to-one function that we call a permutation.
+
+Let $Funs[X,Y]$ denote the set of all random functions $X \rightarrow Y$, and $Perms[X]$ denote all permutations on $X$.
+
+An algorithm $A$ that interacts with a function $f$ is denoted as $A^f$. The interaction is done by sending values $x_1, x_2, ..., x_q$ (that we usually call "querying") to the function and in turn receiving $f(x_1), f(x_2), ..., f(x_q)$.
+
+For an efficient $A^f$, as it runs polynomially in time it will only be able to make polynomially many queries. 
+
+Each query can depend on the answers of pervious ones. It could also depend on $A^f$'s randomness. This is called black-box or oracle access.
+
+\subsection{Pseudorandom Function Generators}
+
+A function $F: K \times X \rightarrow Y$ is said to be a pseudorandom function generator (PRF) where for a fixed $K = k$, $F(k,\cdot)$ is a pseudorandom function. $F$ must be deterministic and efficiently computable. In order for $F$ to be considered secure, it must satisfy any efficient statistical test $A$, that
+
+$$
+Adv_{_{PRF}}[A,F] = \left |\underset{k \in K}{\mathbb{P}}[A^{F(k, \cdot)} = 1] - \underset{f \in F^*}{\mathbb{P}}[A^{f} = 1] \right| \leq \epsilon
+$$
+
+Letting $F^* := Funs[X,Y]$ and for a negligible $\epsilon$.
+
+Additionally, a PRF $F: K \times X \rightarrow X$ is a pseudorandom permutation generator (PRP) if $\forall k \in K\; F(k, \cdot)$ is a permutation and there is a deterministic efficient inversion algorithm $D: K \times X \rightarrow X$.
+
+The notion of security of PRP's is defined in a similar way to that of a PRF, but instead of indistinguishability against random functions, we need indistinguishability against random permutations:
+
+$$
+Adv_{_{PRP}}[A,F] = \left |\underset{k \in K}{\mathbb{P}}[A^{F(k, \cdot)} = 1] - \underset{p \in P^*}{\mathbb{P}}[A^{p} = 1] \right| \leq \epsilon
+$$
+
+Letting $P* := Perms[X]$ and for a negligible $\epsilon$.
+
+Suppose we have a secure PRF $F: K \times X \rightarrow \{0,1\}^{128}$, and we construct a PRF $G$ that outputs the output of $F$ if the input $x$ is nonzero $G(k,x) = F(k,x)$, otherwise it will output all zeroes $G(k,0^{128}) = 0^{128}$. We define a statistical test $A$ that queries the PRF with $0^{128}$ which returns 1 if the PRF returns  $0^{128}$, and 0 elsewise. With such $A$ we can see that $A$'s advantage over $G$ using $0^{128}$ as the query is $Adv_{_{PRF}} = |1 - 1/128| = 127/128$, which is by no means negligible.
+
+Suppose we have $X = \{0,1\}$, then $Perms[X]$ contains two functions: mapping to the same bit or the opposite. Only these two are allowed as it needs to  be invertible. With a key space of $\{0,1\}$ and message space of $\{0,1\}$, the PRP defined as $F(k,x) = x \oplus k$ is a secure PRP. However, $F$ is not a secure PRF as $Funs[X,X]$ contains 4 functions instead of 2 because there are no invertibility constraints.
+
+\subsubsection{PRF Switching Lemma}
+
+Any secure PRP is also a secure PRF for sufficiently large $|X|$. Let $E$ be a PRP over $(K,X)$, then for any q-query adversary A:
+
+$$
+\left| Adv_{_{PRF}}[A,E] - Adv_{_{PRP}}[A,E] \right| < \frac{q^2}{2|X|}
+$$
+
+The condition for sufficiently large $|X|$ manifests itself as $q^2/2|X|$.
+
+\subsection{Constructing a PRG from PRF}
+
+Suppose we have a secure PRF $F: K \times \{0,1\}^n \rightarrow \{0,1\}^n$, and letting $G: K \rightarrow \{0,1\}^{nt}$ be a PRG constructed in the following way:
+
+$$
+G(k) = F(k,0) || F(k,1) || ... || F(k,t-1)
+$$
+
+Then $G$ is also a secure PRG. This is because $F(k,\cdot)$ is indistinguishable from a random function and in turn the corresponding PRG output is indistinguishable from random.
+
+A key property of this PRG is that it can be computed in parallel as each $F(k,i)$ are independent of each other.
+
+\subsection{Constructing a PRF from a PRG}
+
+Suppose we let $G: K \rightarrow K^2$ be a secure PRG, then we can define a 1-bit PRF $F$ where $F(k,x \in \{0,1\}) = G(k)[x]$, letting the output $G(k)$ be defined as an array of two blocks with index 0 or 1.
+
+If G is a secure PRG then F is a secure PRF. % proof?
+
+We can extend this notion further. Supose we define $G_1 = G(G(k)[0])||G(G(k)[1])$, so $G_1: K \rightarrow K^4$ and we get a 2 bit PRF $F(k, x \in \{0,1\}^2) = G_1(k)[x]$.
+
+Similarly we can create a 3 bit PRF as $F(k, x \in \{0,1\}^3) = G(G_1(k)[0])||G(G_1(k)[1])$, and so on and so forth. The generalization of this construction is called the Goldreich-Goldwasser-Micali construction.
+
 \section{Block Ciphers}
 
-Start from notes 7
+A Block cipher is a SES that encrypts a fixed-length of bits (called a block) at a time. Block ciphers are often used as primitives and are widely used to encrypt bulk data.
+
+\subsection{Iterated Block Ciphers}
+
+An iterated block cipher is one that applys a transformation on a message multiple times. The input of the transformation at a specific iteration uses a key and the output of the previous iteration. 
+
+The original key $k$ is expanded into $n$ chunks, each chunk $k_i$ expanded from the original key is used in an iteration. The original input $m$ is passed into a round function $R(k_1,m) = r_1$ for the first round, then the second round computes $R(k_2,r_1) = r_2$. This is done until the last round where $R(k_n, r_n-1) =c$.
+
+\subsubsection{Feistel Network}
+
+An example of an iterated block cipher is a Feistel network. It has a basic mechanism which can be chained multiple times and it is used in many applications.
+
+Suppose we have a secure PRF $F: K \times \{0,1\}^n \rightarrow \{0,1\}^n$. For n rounds we pass a specific key $k_i$ to the PRF to form $f_i(m_i) = F(k_i, m_i)$. 
+
+For the input block (before any rounds, it would be the plaintext), it is divided in the middle to form a left half $L_i$ and a right half $R_i$. The transformation of $L_i, R_i$ toward the next iteration are as follows:
+
+\[
+\begin{split}
+    L_{i+1} &= R_i\\
+    R_{i+1} &= f_i(R_i) \oplus L_i
+\end{split}
+\]
+
+For completeness, an inverse operation to under a layer is as follows:
+
+\[
+\begin{split}
+    R_i &= L_{i+1}\\
+    L_i &= f_i(L_{i+1}) \oplus R_{i+1}\\
+\end{split}
+\]
+
+To invert an entire Feistel network, all that needs to be done is to apply the keys in reverse order. For more details, consider the following link \url{https://en.wikipedia.org/wiki/Feistel_cipher#Construction_details}
+
+\subsection{Modes of operation}
+
+Block Ciphers operate on one block of plaintext at a time, often a plaintext may be more than just a block long. Therefore, there are operating modes for block ciphers that allow it to encrypt multiple blocks. These operating modes are agnostic to the specific cipher used. 
+
+For a more comprehensive list of operating modes, refer to \url{https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation}
+
+\subsubsection{Electronic Code Block}
+
+Electronic Code Block (ECB) is the most naive operating mode. Each block is encrypted independently and there are security implications for this mode of operation. Due to independence, both encryption and decryption are parallelizable.
+
+Namely: for blocks that are encryptions of the same plaintext, their corresponding ciphertexts are the same as well.
+
+\subsubsection{Cipher Block Chaining}
+
+For Cipher Block Chaining (CBC), each encryption of a block of plaintext is XOR'd with the ciphertext of the previous block. For the very first block, an initialization vector (IV) is used instead of the ciphertext of the previous block.
+
+Due to the dependence on the previous block, encryption in a CBC cipher will not be able to be parallelized, but decryption can be parallelized with no issue.
+
+If there is are corruptions of the ciphertext (from transmission, for example), then the block and block after will be corrupted when attempting decryption.
+
+Similarly, to invert this transformation the following is needed:
+
+\subsubsection{Counter Mode}
+
+Counter Mode (CTR) operates by inputting the key and a counter (of the current block) into the cipher, and then XOR with the plaintext at that block to obtain the final ciphertext.
+
+The counter mode has independent ciphertext blocks, so both encryption and decryption are parallelizable.
+
+\subsection{One-time Key Security}
+
+The goal of this section is to build a secure encryption from a secure PRP. For an adversary, we consider an adversary that sees only one ciphertext (and thus only encryption from one key), and its goal is to learn about the plaintext from the ciphertext (breaching semantic security).
+
+ECB is not semantically secure. The adversary sends the challenger two plaintexts where each are two blocks long. One with different blocks and one with the same block(ex. "HELLO HELLO", "HELLO WORLD"). The response will be either be a ciphertext that has different halves or the same half, which gives the adversary total advantage.
+
+\subsubsection{CTR Security}
+
+For any $L>0$, if $F$ is a secure PRF over $(K,X,X)$ then $E_{CTR}$ is a sematically secure cipher over $(K,X^L,X^L)$. In particular, for any efficient adversary $A$ targetting $E_{CTR}$, there exists an efficient PRF adversary $B$ such that 
+
+$$
+Adv_{ss}[A,E_{CTR}] = 2Adv_{PRF}[B,F]
+$$
+
+Since $Adv_{PRF}[B,F]$ is negligible, $Adv_{ss}[A,E_{CTR}]$ will be negligible too.
+
+\subsection{Many-time Key Security}
+
+In this context, the same key is used multiple times to encrypt multiple items. For example, using the same AES key to encrypt many files in a filesystem or packes in a network transmission. In this setting, an adversary can obtain encryptions of arbitrary messages of its choice, thus it is called a chosen plaintext attack. The adversary's goal is to still break semantic security.
+
+For a CPA, the semantic security game is defined slightly differently. The game begins with the challenger committing to a key $k$. The adversary then queries adaptively $q$ plaintexts and receives their encryptions. Afterwards, the adversary sends $m_0, m_1$ to the challenger and the guessing game ensues.
+
+If a key is used multiple times and the output will be the same with the same plaintext, an adversary will be able to send one of the $q$ queries again in the game round, thus giving the adversary total advantage. One way to account for this is to implement randomized encryption, where there is some randomness in the algorithm such that the same key and same plaintext on different runs provide different outputs. This is done usually with the CT being longer than the PT, the difference in bits are random bits.
+
+\section{Data Encryption Standard}
+
+Data Encryption Standard (DES) uses 16 rounds of Feistel Network as its core. Before the feistel network is used, a permutation is applied to the data. The permutation is undone after using the network. The permutation has no cryptographic purpose other than facilitating loading sizes of blocks on older hardware. The input to DES is a 64-bit block of plaintext and 56-bit long key.
+
+\subsection{DES Round function}
+
+In the Feistel network, the function $f_i$ used at each layer takes in a 48-bit key and a 32-bit sub-block. The 32-bit sub-block is first expanded to match the length of the key, then a bitwise XOR is carried out between the subblock and the key. The result is split into 8 chunks (6 bits each), each chunk is mapped into 4 bits via a lookup table (S-Boxes) and joined together to form 32 bits. This 32 bit output undergoes another permutation (P-box) before being returned.
+
+\subsection{S-Boxes}
+
+S-Boxes are implemented as a look-up table, where the input 6-bits are split into the middle 4 bits and the outer 2 bits. Together, they form indices to index into the lookup table which has 4-bit entries.
+
+The selection of values in the S-table is crucial. If the table is linear, then the feistel network becomes trivially decipherable. The notion of linearity is defined as the ability to represent the table as a linear system of equations associating the indices with the values of the table. (i.e. $S_i(\mathbf{x}) = A_i \mathbf{x} \;(\mod 2\,\;)$) can be represented as a linear system of equations, 
+
+\subsection{Exhaustive Search for Key}
+
+Suppose DES is an ideal cipher where there are $2^{56}$ random invertible functions, then for all messages and ciphertexts there is at most one key $k$ such that $c = DES(k,m)$. The uniqueness of a key not exactly a good idea, as if we are guranteed that there is only one key, then finding simply 1 key that decrypts a ciphertext will decipher the rest of the future ciphertexts too.
+
+\subsection{Stacking DES}
+
+To counteract exhaustive search attacks in DES, one method is stacking DES together three times in the follow way:
+
+Let $E: K \times M \rightarrow M$ be a block cipher, and we define $\mathbf{3E} : K^3 \times M \rightarrow M$ as:
+
+$$
+\mathbf{3E}((k_1,k_2,k_3), m) = E(k_1, D(k_2, E(k_3, m)))
+$$
+
+Effectively, 3DES encrypts a message $m$ with $k_3$, decrypts with $k_2$, and then encrypts with $k_1$. One interesting note to make is that when $k_1 = k_2 = k_3$, we are back to a regular DES. This means that we need 3 time the length of the original key, which is now $3*56 = 168$ bits long.
+
+However, two rounds of DES $2DES((k_1, k_2),m) = DES(k_2,DES(k_1,m))$ would be insecure. 2DES has a key length of $2*56 = 112$ bits long. A naive approach would be to brute force every possible key, so in $2^{112}$ time. However, with a slight exploit we can see that if we query $m$ and receive $c$, then we can approach breaking the cipher in both directions: exhaustively computing $DES(k_1,m)$ and exhaustively computing $DES^{-1}(k_2,c)$. Each of which takes $2^{56}$ time. However, there will be a match in decrypting and encrypting, which would validate the $(k_1, k_2)$ pair. This kind of attack is called a \textbf{Meet In The Middle (MITM)} attack. A more elaborate description of this type of attack follows:
+
+\section{Attacks}
+
+\subsection{Meet In The Middle Attack}
+
+For 2DES, an Adversary exploits the property that given $c = DES(k_2,DES(k_1,m))$, then $DES^{-1}(k_2,c) = DES(k_1,m)$. This means all we need is to find a $(k_1, k_2)$ pair that creates this match.
+
+The Adversary proceeds by collecting every possible decryption of $c$ and stores such in a $2^{56} \times 2$ table where row contains an entry of the key used and the decrypted value. This table will need to be sorted by value, which as we know happens at a fastest time complexity of $O(nlogn)$. Thus generating the sorted table of values and corresponding keys take $2^{56}log2^{56}$. 
+
+After this table is generated, the Adversary tries every possible encryption of $m$ and looks up the table for a matching value. As there are $2^{56}$ possible encryptions to try and binary search takes $O(logn)$ time, we have another runtime of $2^{56}log2^{56}$. Combined, the runtime is lesser than $2^{63}$ which is way lesser than a naive $2^{112}$. 
+
+3DES is susceptible to this kind of attack as well, however attaching 3DES with a MITM attack will have a runtime of $2^{118}$.
+
+\subsection{Side Channel attack}
+
+Side channel attacksare defined by attacks that do not directly target the software system. Often this is due to hardware implications of the code. For ciphers, the time and power used in a piece of hardware can reveal key information about the process. The two examples of this are:
+
+\begin{itemize}
+    \item the time to execute different instructions are different
+    \item for validating array of input, the longer it takes, the more correct the first items are. This is because cmp is often implemented by a loop that breaks out as soon as a mismatch is found.
+\end{itemize}
+
+\subsection{Fault Attack}
+
+A fault attack attemptes to create computing errors in the system to reveal secret internal states such as keys.
+
+\subsection{Linear Cryptanalysis}
+
+Linear Cryptanalysis is a known plaintext attack. Linear relationships between keys, plaintext, and ciphertexts are studied and explioted
+
+\subsection{Differential Cryptanalysis}
+
+In the context for block ciphers, a differential cryptanalysis is a set of techniques for tracing differences where the cipher exhibits what is know as non-random behaviour and exploiting such details to recover the secret key.
+
+\subsection{Quantum Attacks}
+
+For a classical computer, the best generic search algorithm time is $O(n)$ for $n$ inputs. However, for a quantum computer (whether it is possible to built is unknown but not the focus of this text), it can be done in $O(\sqrt(n))$ with Grover's algorithm. This means a previously $2^{64}$ time attack on a classical computer only needs $2^{32}$ with a quantum computer. However, an easy way to 
+account for this issue is to simply increase key-lengths.
+
+\section{Advance Encryption Standard}
+
+Advance Encryption Standard (AES) is also known as a Rijndael cipher. It is a classic example of a substitution-permutation network and has a blocksize of 128 bits. The input of AES is a $4 \times 4$ matrix of one byte in each entry, and the key size is either one of 128, 192, or 256. 
+
+Depending on the key size, the rounds in AES are different as well. Namely: AES-128 has 10 rounds, AES-192 has 12 rounds, and AES-256 has 14 rounds. 
+
+Before each round, a piece of the expanded key is XOR'd with the input block (called AddRoundKey). AddRoundKey is applied to the plaintext block before applying the first round. 
+
+\subsection{AES Round Function}
+
+The AES Round function has 4 steps:
+
+\begin{enumerate}
+    \item SubBytes: a non-linear substitution with an S-Box (similar idea to S-Boxes in DES)
+    \item ShiftRows: a transposition step where the last three rows of the input are shifted cyclically a certain number of steps
+    \item MixColumns: A linear mixing operation which operates on the columns of the input
+    \item AddRoundKey 
+\end{enumerate}
+
+\subsection{Properties}
+
+There are two major properties in AES and substitution-permutation networks in general:
+
+Confusion: every bit of ciphertext depends on several parts of the key. Ideally, each bit of ciphertext depends on the whole key.
+
+Diffusion: a change in one bit in the plaintext would reflect a large change (on average half the bits) in the ciphertext.
 
 \end{multicols}
 
