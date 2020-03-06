@@ -503,7 +503,7 @@ For the input block (before any rounds, it would be the plaintext), it is divide
 \end{split}
 \]
 
-For completeness, an inverse operation to under a layer is as follows:
+For completeness, an inverse operation to undo a layer is as follows:
 
 \[
 \begin{split}
@@ -534,21 +534,21 @@ Due to the dependence on the previous block, encryption in a CBC cipher will not
 
 If there is are corruptions of the ciphertext (from transmission, for example), then the block and block after will be corrupted when attempting decryption.
 
-Similarly, to invert this transformation the following is needed:
+For any $L>0$, if $E$ is a secure PRP over $(K,X)$, then $E_{CBC}$ is a semantically secure under CPA over $(K, X^L, X^{L+1})$. In particular, for a $q$-query adversary attacking $E_{CBC}$, there exists a PRP adversary such that
+
+$$
+Adv_{CPA}[A,E_{CBC}] \leq 2Adv_{PRP}[B,E] + \frac{2q^2L^2}{|X|}
+$$
+
+Note, using CBC is only secure if $q^2L^2 << |X|$. The $2q^2L^2/|X|$ term is the probability that the inputs to $F(k,)$ are the same.
+
+CBC is not CPA-secure if the attack can predict the IV. Previously in SSL/TLS 1.0, the IV for a particular record is the last CT block of the previous record, which makes it predictable.
 
 \subsubsection{Counter Mode}
 
 Counter Mode (CTR) operates by inputting the key and a counter (of the current block) into the cipher, and then XOR with the plaintext at that block to obtain the final ciphertext.
 
 The counter mode has independent ciphertext blocks, so both encryption and decryption are parallelizable.
-
-\subsection{One-time Key Security}
-
-The goal of this section is to build a secure encryption from a secure PRP. For an adversary, we consider an adversary that sees only one ciphertext (and thus only encryption from one key), and its goal is to learn about the plaintext from the ciphertext (breaching semantic security).
-
-ECB is not semantically secure. The adversary sends the challenger two plaintexts where each are two blocks long. One with different blocks and one with the same block(ex. "HELLO HELLO", "HELLO WORLD"). The response will be either be a ciphertext that has different halves or the same half, which gives the adversary total advantage.
-
-\subsubsection{CTR Security}
 
 For any $L>0$, if $F$ is a secure PRF over $(K,X,X)$ then $E_{CTR}$ is a sematically secure cipher over $(K,X^L,X^L)$. In particular, for any efficient adversary $A$ targetting $E_{CTR}$, there exists an efficient PRF adversary $B$ such that 
 
@@ -558,13 +558,31 @@ $$
 
 Since $Adv_{PRF}[B,F]$ is negligible, $Adv_{ss}[A,E_{CTR}]$ will be negligible too.
 
+For a $q$-query adversary $A$ (in chosen-plaintext attacks) targetting $E_{CTR}$, there exists an efficient PRF adversary $B$ such that
+
+$$
+Adv_{CPA}[A,E_{CTR}] \leq 2Adv_{PRF}[B,F] + \frac{2q^2L}{|X|}
+$$
+
+CTR is only secure if $q^2L << |X|$, which is better in comparison to CBC.
+
+\subsection{One-time Key Security}
+
+The goal of this section is to build a secure encryption from a secure PRP. For an adversary, we consider an adversary that sees only one ciphertext (and thus only encryption from one key), and its goal is to learn about the plaintext from the ciphertext (breaching semantic security).
+
+ECB is not semantically secure. The adversary sends the challenger two plaintexts where each are two blocks long. One with different blocks and one with the same block(ex. "HELLO HELLO", "HELLO WORLD"). The response will be either be a ciphertext that has different halves or the same half, which gives the adversary total advantage.
+
 \subsection{Many-time Key Security}
 
 In this context, the same key is used multiple times to encrypt multiple items. For example, using the same AES key to encrypt many files in a filesystem or packes in a network transmission. In this setting, an adversary can obtain encryptions of arbitrary messages of its choice, thus it is called a chosen plaintext attack. The adversary's goal is to still break semantic security.
 
 For a CPA, the semantic security game is defined slightly differently. The game begins with the challenger committing to a key $k$. The adversary then queries adaptively $q$ plaintexts and receives their encryptions. Afterwards, the adversary sends $m_0, m_1$ to the challenger and the guessing game ensues.
 
-If a key is used multiple times and the output will be the same with the same plaintext, an adversary will be able to send one of the $q$ queries again in the game round, thus giving the adversary total advantage. One way to account for this is to implement randomized encryption, where there is some randomness in the algorithm such that the same key and same plaintext on different runs provide different outputs. This is done usually with the CT being longer than the PT, the difference in bits are random bits.
+If a key is used multiple times and the output will be the same with the same plaintext, an adversary will be able to send one of the $q$ queries again in the game round, thus giving the adversary total advantage
+
+One way to account for this is to implement randomized encryption, where there is some randomness in the algorithm such that the same key and same plaintext on different runs provide different outputs. This is done usually with the CT being longer than the PT, the difference in bits are random bits.
+
+Another way to account for this is to apply nonce-based encryption. A nonce is something that changes from message to message. There are different way to actualize this. One way is to choose a random number as the nonce each time, another another is to use some sort of counter as a nonce (for example, refer to CTR). In the game setting, each encryption that the challenger applies uses distinct nonces, but the nonces should be given by the adversary.
 
 \section{Data Encryption Standard}
 
@@ -662,6 +680,11 @@ There are two major properties in AES and substitution-permutation networks in g
 Confusion: every bit of ciphertext depends on several parts of the key. Ideally, each bit of ciphertext depends on the whole key.
 
 Diffusion: a change in one bit in the plaintext would reflect a large change (on average half the bits) in the ciphertext.
+
+\section{Message Authentication Code}
+
+% to be continued in lecture note 9
+
 
 \end{multicols}
 
