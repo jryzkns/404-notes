@@ -683,8 +683,124 @@ Diffusion: a change in one bit in the plaintext would reflect a large change (on
 
 \section{Message Authentication Code}
 
-% to be continued in lecture note 9
+A message authentication code is useful where message integrity is to be maintained. Integrity is defined as the inability of an attacker to modify a ciphertext in such a way that the decrypted plaintext changes meanings. For example, message integrity is needed to protect public binaries on disk, or protect banner ads on web pages.
 
+A MAC $I = (S,V)$ defined over $(K,M,T)$ is a pair of algorithms for signing $S: K \times M \rightarrow T$ (which generates a $t$ tag) and verifying $V: K \times M \times T \rightarrow \{0,1\}$ the encryption (by outputting 0 or 1).
+
+One simple example of a MAC is a Cyclic Redundancy Check (CRC). It is designed to detect random errors in the encryption and not malicious errors. An attacker can easily modify the messaage recompute the CRC.
+
+\subsection{Constructing a MAC from a PRF}
+
+A simple construction is to let $S(k,m) := F(k,m)$, where $F$ is a secure PRF. $V(k,m,t)$ will output 1 if $t = F(k,m)$ and 0 otherwise. As long as the PRF is secure and the PRF output is long enough, the resulting MAC will be secure as well.
+
+\subsection{MAC Security}
+
+For an attacker, the attacker is capable of giving a chosen message attack, where for a certain amount of queries $m_1, m_2, ..., m_q$ the attacker can obtain all corresonding tag $t_i$'s. The goal of an attack is existential forgery, where a new message-tag pair (that does not exist from message-tag pairs that the attacker has already seen) is generated that is verifiable by $V$.
+
+The notion of a secure MAC is defined in a game sense as the following:
+
+\begin{itemize}
+    \item Challenger commits to a key $k$
+    \item Adversary queries $q$ messages to the Challenger
+    \item Challenger computes $S$ and returns $q$ corresponding tags
+    \item Adversary sends newly forged $(m,t)$ to Challenger
+    \item Challenger computes $V$ and outputs $b=1$ if forgery is successful
+\end{itemize}
+
+A MAC scheme $I = (S,V)$ is said to be secure if for all efficient $A$, $Adv_{MAC}[A,I] = \mathbb{P}[b = 1] \leq \epsilon$ for a negligible $epsilon$.
+
+If $F: K \times X \rightarrow Y$ is a secure PRF and $|Y|^{-1}$ is negligible, then the MAC $I_F$ constructed from it is also secure. In particular, for every efficient MAC adversary A, there exists an efficient PRF adversary B such that
+
+$$
+Adv_{MAC}[A,I_F] \leq Adv_{PRF}[B,F] + \frac{1}{|Y|}
+$$
+
+As such, $I_F$ is secure as long as $|Y|$ is large.
+
+\subsection{MAC Expansion/Truncation}
+
+Suppose we use a PRF to construct a MAC, we need some sort of method to generate a tag for an entire payload, not just a block. Thus questions regarding expansion and truncation of MAC outputs arise.
+
+\subsubsection{Truncation}
+
+MAC truncation can be easily achieved by taking the first $w$ desired bits in the original MAC output. Security in truncated MAC outputs are preserved as long as $2^{-w}$ is a negligible amount.
+
+\subsubsection{Expansion}
+
+Often expansion of MAC outputs are computed with similar styles to how block ciphers operate, which will be discussed in the coming section.
+
+
+\subsection{MAC Expansion Constructions}
+
+\subsubsection{CBC-MAC}
+
+Suppose we have a PRF $F: K \times X \rightarrow X$, we define a new PRF $F_{_{ECBC}} : K^2 \times X^{\leq L} \rightarrow X$. For an input message $m$, each message block $m[i]$ is XOR'd with the outputs of the previous block before being fed into $F$ for the result. The first block $m[0]$ is XOR'd with $0^n$ (a zero IV), and at the very end, the result is passed through $F$ with another independently chosen key. If the final encryption is not computed, the function is called a raw CBC function.
+
+For every efficient $q$-query PRF adversary $A$ attacking $F_{_{ECBC}}$, there exists an efficient adversary $B$ such that
+
+$$
+Adv_{PRF}[A,F_{_{ECBC}}] \leq Adv_{PRF}[A, F] + \frac{2q^2}{|X|}
+$$
+
+\subsubsection{CMAC}
+
+A cipher-based MAC (CMAC) is similar to CBC-MAC but it does not apply the last encryption step. Instead, the MAC uses two keys. The first key is used in the underlying PRF, and the second key is XOR'd with the last block before XOR'd with the outputs of the previous block.
+
+\subsubsection{NMAC}
+
+Suppose we have a PRF $F: K \times X \rightarrow X$, we define a new PRF $F_{_{NMAC}}: K^2 \times X^{\leq L} \rightarrow k$. For each block $m[i]$ in the message $m$, it is passed to $F$ with the output of the previous block as the key. For the first block $m[0]$, the original key $k$ is used as the key for $F$. After passing through all of the blocks, we obtain an output $t$. This process is called a cascade function. However, a cascade function is not a secure MAC. The next step involves padding the output of the cascade function with a fixed pad \texttt{fpad} and sending $t || \mathtt{fpad}$ to $F$ with another independently chosen key to derive the final tag.
+
+For every efficient $q$-query adversary $A$ attacking $F_{_{NMAC}}$, there exists an efficient adversary $B$ such that
+
+$$
+Adv_{PRF}[A,F_{_{NMAC}}] \leq Adv_{PRF}[A, F] + \frac{q}{2|K|}
+$$
+
+\subsubsection{Discussion}
+
+Pure CBC and cascade functions are not secure MAC's. This is because MAC's with this kind of construction can be forged with one chosen message query. For example, $\mathtt{cascade}(k,m)$ can be extended to $\mathtt{cascade}(k,m||w)$ for any $w$.
+
+For a raw CBC function, the adversary can approach in the following manner:
+
+\begin{itemize}
+    \item Choose an arbitrary one-block messsage $m$
+    \item Request a tag $t = F(k,m)$
+    \item Output $t$ as MAC forgery for the 2 block message $(m, t \oplus m)$
+\end{itemize}
+
+As a matter of fact:
+
+\[
+\begin{aligned}
+     &\;rawCBC(k,(m,t \oplus m))\\
+    =&\;F(k, F(k,m) \oplus (t \oplus m)) \\
+    =&\;F(k,t \oplus (t \oplus m)) \\
+    =&\;t
+\end{aligned}    
+\]
+
+Suppose $F_{_{BIG}}: K \times X \rightarrow Y$ be a PRF that has the extension property
+
+$$
+F_{_{BIG}}(k,x) = F_{_{BIG}}(k,y) \rightarrow F_{_{BIG}}(k,x||w) = F_{_{BIG}}(k,y||w)
+$$
+
+A generic attack could run in the following way:
+
+\begin{itemize}
+    \item query $|Y|^{1/2}$ random messages in $X$ and obtain their respective tags.
+    \item find a collision $t_u = t_v$ for $u \neq v$. (There will be one that exists with high probability by the birthday paradox)
+    \item choose some $w$ and query $t := F_{_{BIG}}(k, m_u || w)$.
+    \item Output forgery $(m_v||w, t)$.
+\end{itemize}
+
+This attack works because $F_{_{BIG}}(k, m_v || w)$ is the same as $F_{_{BIG}}(k, m_u || w)$. The time that it takes to execute this attack is dependent on tag collision, which is probabilistic.
+
+\subsection{MAC Padding}
+
+As MAC's usually have specific blocksizes, for payloads that are not to a multiple of a blocksize, padding is needed. Zero padding is insecure. For security, padding must be invertible.
+
+The ISO standard specifies to pad with 1 and then all 0's. A new dummy block if it is needed. The 1 would denote the beginning of the pad.
 
 \end{multicols}
 
