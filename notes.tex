@@ -282,7 +282,7 @@ PRG's are parametrized by a security parameter $\lambda$, where the PRG becomes 
 
 \subsubsection {PRG Predictability}
 
-PRG's should be unpredictable. Meaning, given its previous outputs, we could and should not be able to predict its future outputs. We say that a PRG is predictable at position $i$ if there exists an Algorithm $A$ that is polytime in $\lambda$ such that
+PRG's should be unpredictable. Meaning, given its previous outputs, we should not be able to predict its future outputs. We say that a PRG is predictable at position $i$ if there exists an Algorithm $A$ that is polytime in $\lambda$ such that
 
 $$
 \mathbb{P}[A(\lambda, G_\lambda(\mathbf{k})[:i]) = G_\lambda(\mathbf{k})[i+1]] \geq \frac{1}{2} + \epsilon(\lambda)
@@ -394,7 +394,7 @@ Due to the fact that keys are only 5 bytes wide, the cipher can be brute forced.
 
 \subsection{Rivest Cipher 4}
 
-While the LFSR is efficient in hardware, it isn't so in software. The Rivest Cipher 4 (RC4) addresses this by being an efficeint software solution that avoids the use of LFSR's.
+While the LFSR is efficient in hardware, it isn't so in software. The Rivest Cipher 4 (RC4) addresses this by being an efficient software solution that avoids the use of LFSR's.
 
 It is used in HTTPS and WEP, but nonetheless it is insecure due to some vulnerabilities. In particular, there is a bias in the initial output that renders its PRG predictable.
 
@@ -654,7 +654,9 @@ In the context for block ciphers, a differential cryptanalysis is a set of techn
 For a classical computer, the best generic search algorithm time is $O(n)$ for $n$ inputs. However, for a quantum computer (whether it is possible to built is unknown but not the focus of this text), it can be done in $O(\sqrt(n))$ with Grover's algorithm. This means a previously $2^{64}$ time attack on a classical computer only needs $2^{32}$ with a quantum computer. However, an easy way to 
 account for this issue is to simply increase key-lengths.
 
-\section{Advance Encryption Standard}
+For collison attacks, the Grover's algorithm can complete an attack in $O(|T|^{\frac{1}{3}})$ time compared to a generic attack on a classical computer running in $O(|T|^{\frac{1}{2}})$.
+
+\section{Advanced Encryption Standard}
 
 Advance Encryption Standard (AES) is also known as a Rijndael cipher. It is a classic example of a substitution-permutation network and has a blocksize of 128 bits. The input of AES is a $4 \times 4$ matrix of one byte in each entry, and the key size is either one of 128, 192, or 256. 
 
@@ -687,7 +689,7 @@ A message authentication code is useful where message integrity is to be maintai
 
 A MAC $I = (S,V)$ defined over $(K,M,T)$ is a pair of algorithms for signing $S: K \times M \rightarrow T$ (which generates a $t$ tag) and verifying $V: K \times M \times T \rightarrow \{0,1\}$ the encryption (by outputting 0 or 1).
 
-One simple example of a MAC is a Cyclic Redundancy Check (CRC). It is designed to detect random errors in the encryption and not malicious errors. An attacker can easily modify the messaage recompute the CRC.
+One simple example of a MAC is a Cyclic Redundancy Check (CRC). It is designed to detect random errors in the encryption and not malicious errors. An attacker can easily modify the message and recompute the CRC.
 
 \subsection{Constructing a MAC from a PRF}
 
@@ -739,7 +741,7 @@ Suppose we have a PRF $F: K \times X \rightarrow X$, we define a new PRF $F_{_{E
 For every efficient $q$-query PRF adversary $A$ attacking $F_{_{ECBC}}$, there exists an efficient adversary $B$ such that
 
 $$
-Adv_{PRF}[A,F_{_{ECBC}}] \leq Adv_{PRF}[A, F] + \frac{2q^2}{|X|}
+Adv_{PRF}[A,F_{_{ECBC}}] \leq Adv_{PRF}[B, F] + \frac{2q^2}{|X|}
 $$
 
 \subsubsection{CMAC}
@@ -753,8 +755,34 @@ Suppose we have a PRF $F: K \times X \rightarrow X$, we define a new PRF $F_{_{N
 For every efficient $q$-query adversary $A$ attacking $F_{_{NMAC}}$, there exists an efficient adversary $B$ such that
 
 $$
-Adv_{PRF}[A,F_{_{NMAC}}] \leq Adv_{PRF}[A, F] + \frac{q}{2|K|}
+Adv_{PRF}[A,F_{_{NMAC}}] \leq Adv_{PRF}[B F] + \frac{q}{2|K|}
 $$
+
+
+\subsubsection{PMAC}
+
+A parallel MAC is an incremental construction where each $i^{th}$ block of the payload is XOR'd with an easy to compute function $P(k,i)$. Then every processed block except the last are each passed through a PRF $F(k_1,\cdot)$. All the blocks are XOR'd together before one last pass through of $F(k_1,\cdot)$ to provide the tag.
+
+Suppose the F used in the PMAC is a PRP, we can update the tag when a block changes. Suppose that for a message $m$, the $j^{th}$ block is updated ($m[j] \rightarrow m'[j]$), the update to the tag is done as follows:
+
+\[
+\begin{aligned}
+    t' = F(k_1, &\\
+    & F^{-1}(k_1,t) \\
+    \oplus & F(k_1,m[j] \oplus P(k,j)) \\
+    \oplus & F(k_1,m'[j] \oplus P(k,j)))
+\end{aligned}
+\]
+
+Note that this only works for any $j$ except for the last. However, similarly we can add new blocks and remove blocks an still update the tag.
+
+For every efficient $q$-query adversary $A$ attacking $F_{_{PMAC}}$, there exists and efficient PRF adversary $B$ such that
+
+$$
+Adv_{PRF}[A,F_{_{PMAC}}] \leq Adv_{PRF}[B, F] + \frac{2q^2L^2}{|X|}
+$$
+
+% TODO: HMAC
 
 \subsubsection{Discussion}
 
@@ -801,6 +829,37 @@ This attack works because $F_{_{BIG}}(k, m_v || w)$ is the same as $F_{_{BIG}}(k
 As MAC's usually have specific blocksizes, for payloads that are not to a multiple of a blocksize, padding is needed. Zero padding is insecure. For security, padding must be invertible.
 
 The ISO standard specifies to pad with 1 and then all 0's. A new dummy block if it is needed. The 1 would denote the beginning of the pad.
+
+\section{Hashing}
+
+A hash function is defined as $H: M \rightarrow T$ where $|M| >> |T|$. Due to the difference in size of $M$ and $T$, we are bound to have different elements in $M$ map to the same value in $T$. In the context of hash functions, we call this a collision. 
+
+More formally, a collision for a hash function $H$ is defined as a pair $m_0, m_1 \in M$ such that $H(m_0) = H(m_1)$ and $m_0 \neq m_1$. A hash function is said to be collision resistant if for all efficient adversary $A$, 
+
+$$
+Adv_{CR}[A,H] = \mathbb{P}[\mathtt{A\;outputs\;collision\;for\;H}] < \epsilon
+$$
+
+for a negligible $\epsilon$.
+
+\subsection{Birthday Attack}
+
+Suppose we have a hash function $H: M \rightarrow \{0,1\}^n$, a generic algorithm can find a collision in $O(2^{\frac{n}{2}})$ time, and is carried out in the following manner:
+
+\begin{itemize}
+    \item Sample $2^{\frac{n}{2}}$ random messages in $M$
+    \item For each of the messages sampled, compute and save its hash
+    \item Look for a collision within the hashes computed
+    \item If no collision has been found, start over
+\end{itemize}
+
+This attack works because of the birthday paradox. The paradox states that if there is a upper bound $B$, then when there are $1.2 \times B^{\frac{1}{2}}$ samples, then the probability that there is a collision is at least 50\%. Because the odds are 50\%, we expect two iterations of the attack to generate a collision.
+
+\subsection{Merkle-Damgard Paradigm}
+
+The Merkle-Damgard iterated construction (MD) is a way to provide secure hashing over many blocks of input. The hash of a block is provided by the output hash of the previous block (IV if no previous block) and itself given to a hash function.
+
+The collision resistance of a MD construction depends on its underlying hashing function. Namely, for a MD hashing function $H$ built upon $h$, if $h$ is collision resistant, then so is $H$.
 
 \end{multicols}
 
